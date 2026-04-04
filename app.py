@@ -1,211 +1,120 @@
 import streamlit as st
 from st_supabase_connection import SupabaseConnection
 import random
-from datetime import datetime
 
-# Configuration de la page (Mobile First)
+# ==========================================
+# 1. CONFIGURATION & CLÉS (À REMPLIR)
+# ==========================================
+# Colle tes infos entre les guillemets ci-dessous :
+SUPABASE_URL = "https://undrmzgxabrhleodjqzn.supabase.co"
+SUPABASE_KEY = "sb_publishable_sQojFj2F-6V1a6Z675Pa3Q_MQrMrtT6"
+MOT_DE_PASSE_SECRET = "Amour" # Tu peux le changer si tu veux
+
 st.set_page_config(page_title="Notre Carnet d'Aventures", page_icon="💖", layout="centered")
 
 # ==========================================
-# CONFIGURATION SUPABASE & SÉCURITÉ
-# ==========================================
-# Instructions :
-# 1. Créez un projet sur Supabase (https://supabase.com)
-# 2. Allez dans Project Settings -> API
-# 3. Copiez l'URL et la clé 'anon' / 'public' ci-dessous :
-SUPABASE_URL = "https://undrmzgxabrhleodjqzn.supabase.co"
-SUPABASE_KEY = "sb_publishable_sQojFj2F-6V1a6Z675Pa3Q_MQrMrtT6"
-
-APP_PASSWORD = "amour" # 🔒 Changez ce mot de passe !
-
-# ==========================================
-# STYLES CSS PERSONNALISÉS (Doux & Romantique)
-# ==========================================
-st.markdown("""
-<style>
-    /* Couleurs de fond et texte */
-    .stApp {
-        background-color: #FFFDF9;
-        color: #5D4037;
-    }
-    /* Style des cartes */
-    .idea-card {
-        padding: 15px;
-        border-radius: 15px;
-        margin-bottom: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        border: 1px solid #F0E6D2;
-    }
-    .cat-Voyage { background-color: #E3F2FD; }
-    .cat-Food { background-color: #FFF3E0; }
-    .cat-Maison { background-color: #E8F5E9; }
-    .cat-Sorties { background-color: #F3E5F5; }
-    .cat-Folie { background-color: #FFEBEE; }
-    
-    .idea-title {
-        font-size: 1.2rem;
-        font-weight: bold;
-        margin-bottom: 5px;
-    }
-    .idea-meta {
-        font-size: 0.9rem;
-        color: #8D6E63;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# ==========================================
-# 1. PAGE D'ACCUEIL SÉCURISÉE
-# ==========================================
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-
-if not st.session_state.authenticated:
-    st.markdown("<h1 style='text-align: center;'>🔒 Notre Carnet d'Aventures</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center;'>Entrez le mot de passe pour accéder à nos secrets...</p>", unsafe_allow_html=True)
-    
-    pwd = st.text_input("Mot de passe", type="password")
-    if st.button("Déverrouiller 🗝️", use_container_width=True):
-        if pwd == APP_PASSWORD:
-            st.session_state.authenticated = True
-            st.rerun()
-        else:
-            st.error("Mot de passe incorrect 💔")
-    st.stop()
-
-# ==========================================
-# CONNEXION SUPABASE
+# 2. CONNEXION BDD
 # ==========================================
 @st.cache_resource
 def init_connection():
     return st.connection("supabase", type=SupabaseConnection, url=SUPABASE_URL, key=SUPABASE_KEY)
 
-# Sécurité pour éviter les erreurs si les clés ne sont pas encore configurées
-if SUPABASE_URL == "VOTRE_SUPABASE_URL_ICI":
-    st.warning("⚠️ Veuillez configurer SUPABASE_URL et SUPABASE_KEY dans le code (lignes 14-15).")
-    st.stop()
-
 conn = init_connection()
 
-# Fonction pour récupérer les données
 def get_data():
+    # Correction de la syntaxe de lecture
     response = conn.table("carnet_aventures").select("*").execute()
     return response.data
 
+# ==========================================
+# 3. SÉCURITÉ (LOGIN)
+# ==========================================
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.title("🔐 Accès Privé")
+    pwd = st.text_input("Entrez le mot de passe pour voir nos aventures :", type="password")
+    if st.button("Se connecter"):
+        if pwd == MOT_DE_PASSE_SECRET:
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("Mot de passe incorrect ❌")
+    st.stop()
+
+# ==========================================
+# 4. RÉCUPÉRATION DES DONNÉES
+# ==========================================
 data = get_data()
 envies = [d for d in data if not d['statut_fait']]
 souvenirs = [d for d in data if d['statut_fait']]
 
 # ==========================================
-# BARRE DE PROGRESSION
+# 5. INTERFACE ET DESIGN
 # ==========================================
-st.markdown("<h2 style='text-align: center;'>💖 Notre Carnet d'Aventures</h2>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>💖 Notre Carnet d'Aventures</h1>", unsafe_allow_html=True)
 
-total_ideas = len(data)
-realized = len(souvenirs)
-progress = realized / total_ideas if total_ideas > 0 else 0
+# Barre de progression
+total = len(data)
+realise = len(souvenirs)
+progres = realise / total if total > 0 else 0
+st.progress(progres, text=f"Nos rêves réalisés : {realise}/{total} ({int(progres*100)}%) ✨")
 
-st.progress(progress, text=f"Nos rêves réalisés : {realized}/{total_ideas} ({int(progress*100)}%) ✨")
+tab1, tab2 = st.tabs(["🎯 Nos Envies", "📸 Nos Souvenirs"])
 
-# ==========================================
-# 2. NAVIGATION (ONGLETS)
-# ==========================================
-tab_envies, tab_souvenirs = st.tabs(["💭 Nos Envies", "📸 Nos Souvenirs"])
-
-with tab_envies:
-    # ==========================================
-    # 4. BOUTON SURPRISE
-    # ==========================================
-    if st.button("🎲 Surprise-nous !", use_container_width=True, type="primary"):
-        if envies:
-            surprise = random.choice(envies)
-            st.balloons()
-            st.success(f"🎉 **Idée piochée :** {surprise['titre']} ({surprise['catégorie']})")
-        else:
-            st.info("Ajoutez d'abord des envies ! 📝")
-
-    # ==========================================
-    # 3. AJOUT D'UNE IDÉE
-    # ==========================================
-    with st.expander("➕ Ajouter une nouvelle envie"):
-        with st.form("form_add"):
+with tab1:
+    # Formulaire d'ajout
+    with st.expander("+ Ajouter une nouvelle envie"):
+        with st.form("add_form"):
             titre = st.text_input("Qu'est-ce qui te ferait plaisir ?")
-            categorie = st.selectbox("Catégorie", ["Voyage ✈️", "Food 🍕", "Maison 🏡", "Sorties 🎭", "Folie 🤪"])
-            auteur = st.selectbox("Proposé par", ["Joanna 🌸", "Clément 🦊"])
+            cat = st.selectbox("Catégorie", ["Voyage ✈️", "Food 🍕", "Maison 🏠", "Sorties 🎭", "Folie 🤪"])
+            qui = st.selectbox("Proposé par", ["Joanna 🌸", "Clément 🦊"])
             
-            if st.form_submit_button("Ajouter à notre liste ✨", use_container_width=True):
+            if st.form_submit_button("Ajouter à notre liste ✨"):
                 if titre:
-                    conn.table("carnet_aventures").insert({
-                        "titre": titre,
-                        "catégorie": categorie,
-                        "auteur": auteur,
-                        "statut_fait": False
-                    }).execute()
-                    st.success("Envie ajoutée ! 💖")
-                    st.rerun()
+                    try:
+                        conn.table("carnet_aventures").insert({
+                            "titre": titre,
+                            "categorie": cat,
+                            "auteur": qui,
+                            "statut_fait": False
+                        }).execute()
+                        st.success("C'est noté ! ❤️")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erreur : {e}")
                 else:
-                    st.error("N'oublie pas le titre !")
+                    st.warning("Donne un petit nom à cette envie ! :)")
 
+    # Bouton Surprise
+    if envies:
+        if st.button("🎲 Surprise-nous !"):
+            choix = random.choice(envies)
+            st.balloons()
+            st.info(f"L'aventure du jour sera : **{choix['titre']}** ({choix['categorie']})")
+
+    # Affichage des cartes
     st.divider()
-    
-    # AFFICHAGE DES ENVIES
     if not envies:
-        st.info("Notre liste est vide. Ajoutons de nouveaux projets ! 🚀")
-        
-    for idea in envies:
-        # Extraction du premier mot de la catégorie pour la classe CSS (ex: "Voyage ✈️" -> "Voyage")
-        cat_class = idea['catégorie'].split(" ")[0]
-        
-        st.markdown(f"""
-        <div class="idea-card cat-{cat_class}">
-            <div class="idea-title">{idea['titre']}</div>
-            <div class="idea-meta">{idea['catégorie']} • Proposé par {idea['auteur']}</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # ==========================================
-        # 5. VALIDATION D'UN SOUVENIR
-        # ==========================================
-        col1, col2 = st.columns([1, 2])
-        with col1:
-            if st.button("✅ C'est fait !", key=f"btn_{idea['id']}"):
-                st.session_state[f"valider_{idea['id']}"] = True
-                
-        if st.session_state.get(f"valider_{idea['id']}", False):
-            note = st.text_area("Un petit mot sur ce souvenir ?", key=f"note_{idea['id']}")
-            if st.button("Enregistrer le souvenir 💌", key=f"save_{idea['id']}"):
-                conn.table("carnet_aventures").update({
-                    "statut_fait": True,
-                    "note_souvenir": note,
-                    "date_réalisation": datetime.now().isoformat()
-                }).eq("id", idea['id']).execute()
-                st.session_state[f"valider_{idea['id']}"] = False
-                st.rerun()
+        st.write("La liste est vide, ajoutez vite des idées ! 🚀")
+    else:
+        for item in envies:
+            with st.container():
+                col1, col2 = st.columns([4, 1])
+                col1.write(f"**{item['titre']}** \n*{item['categorie']} - Par {item['auteur']}*")
+                if col2.button("Fait ! ✅", key=item['id']):
+                    note = st.text_area("Un petit mot sur ce souvenir ?", key=f"note_{item['id']}")
+                    if st.button("Valider le souvenir 📸", key=f"val_{item['id']}"):
+                        conn.table("carnet_aventures").update({
+                            "statut_fait": True,
+                            "note_souvenir": note
+                        }).eq("id", item['id']).execute()
+                        st.rerun()
 
-with tab_souvenirs:
+with tab2:
     if not souvenirs:
-        st.info("Pas encore de souvenirs... Il est temps de passer à l'action ! 🥰")
-        
-    # Trier les souvenirs par date de réalisation (du plus récent au plus ancien)
-    souvenirs_tries = sorted(souvenirs, key=lambda x: x.get('date_réalisation') or '', reverse=True)
-    
-    for s in souvenirs_tries:
-        date_str = s.get('date_réalisation')
-        if date_str:
-            try:
-                # Formatage de la date
-                date_obj = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-                date_formatee = date_obj.strftime("%d/%m/%Y")
-            except:
-                date_formatee = date_str[:10]
-        else:
-            date_formatee = "Date inconnue"
-            
-        st.markdown(f"""
-        <div class="idea-card" style="background-color: #FAFAFA;">
-            <div class="idea-title">✨ {s['titre']}</div>
-            <div class="idea-meta">Réalisé le {date_formatee} • {s['catégorie']}</div>
-            <hr style="margin: 10px 0; border-top: 1px dashed #D7CCC8;">
-            <div style="font-style: italic; color: #5D4037;">"{s['note_souvenir']}"</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.write("Pas encore de souvenirs... Allons en créer ! 🏃‍♂️🏃‍♀️")
+    else:
+        for s in souvenirs:
+            st.success(f"**{s['titre']}** \n{s['note_souvenir'] if s['note_souvenir'] else 'Pas de note.'}")
