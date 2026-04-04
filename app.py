@@ -89,7 +89,7 @@ conn = init_connection()
 
 # Fonction pour récupérer les données
 def get_data():
-    response = conn.query("*", table="carnet_aventures", ttl=0).execute()
+response = conn.table("carnet_aventures").select("*").execute()
     return response.data
 
 data = get_data()
