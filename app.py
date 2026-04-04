@@ -12,6 +12,13 @@ MOT_DE_PASSE_SECRET = "Amour"
 
 st.set_page_config(page_title="Notre Carnet d'Aventures", page_icon="💖", layout="centered")
 
+# Style CSS pour cacher les labels des boutons de suppression (plus esthétique)
+st.markdown("""
+    <style>
+    .stButton button { border-radius: 20px; }
+    </style>
+""", unsafe_allow_html=True)
+
 # ==========================================
 # 2. CONNEXION BDD
 # ==========================================
@@ -43,7 +50,7 @@ if not st.session_state.authenticated:
     st.stop()
 
 # ==========================================
-# 4. LOGIQUE DE VALIDATION (MODALE)
+# 4. FONCTIONS DE GESTION (MODALES)
 # ==========================================
 @st.dialog("Enregistrer ce souvenir 📸")
 def valider_souvenir(item_id, titre):
@@ -57,11 +64,20 @@ def valider_souvenir(item_id, titre):
         st.success("Souvenir enregistré !")
         st.rerun()
 
+@st.dialog("Supprimer l'élément ? 🗑️")
+def confirmer_suppression(item_id, titre):
+    st.warning(f"Veux-tu vraiment supprimer '**{titre}**' ?")
+    st.write("Cette action est irréversible.")
+    if st.button("Oui, supprimer définitivement", type="primary"):
+        conn.table("carnet_aventures").delete().eq("id", item_id).execute()
+        st.success("Supprimé !")
+        st.rerun()
+
 # ==========================================
 # 5. RÉCUPÉRATION DES DONNÉES
 # ==========================================
 data = get_data()
-# On trie par date pour avoir les plus récents en haut
+# Tri par date de création (plus récent en haut)
 data = sorted(data, key=lambda x: x['date_creation'], reverse=True)
 envies = [d for d in data if not d['statut_fait']]
 souvenirs = [d for d in data if d['statut_fait']]
@@ -106,10 +122,12 @@ with tab1:
         st.info("La liste est vide ! 🚀")
     else:
         for item in envies:
-            col1, col2 = st.columns([3, 1])
+            col1, col2, col3 = st.columns([3, 0.8, 0.5])
             col1.markdown(f"**{item['titre']}** \n*{item['categorie']} • {item['auteur']}*")
-            if col2.button("Fait ! ✅", key=f"btn_{item['id']}"):
+            if col2.button("Fait ! ✅", key=f"done_{item['id']}"):
                 valider_souvenir(item['id'], item['titre'])
+            if col3.button("🗑️", key=f"del_{item['id']}"):
+                confirmer_suppression(item['id'], item['titre'])
 
 with tab2:
     if not souvenirs:
@@ -117,7 +135,12 @@ with tab2:
     else:
         for s in souvenirs:
             with st.chat_message("user", avatar="✨"):
-                st.write(f"**{s['titre']}**")
-                st.caption(f"Catégorie : {s['categorie']}")
-                if s['note_souvenir']:
-                    st.info(s['note_souvenir'])
+                col_a, col_b = st.columns([5, 1])
+                with col_a:
+                    st.write(f"**{s['titre']}**")
+                    st.caption(f"Catégorie : {s['categorie']}")
+                    if s['note_souvenir']:
+                        st.info(s['note_souvenir'])
+                with col_b:
+                    if st.button("🗑️", key=f"del_souv_{s['id']}"):
+                        confirmer_suppression(s['id'], s['titre'])
