@@ -1,6 +1,7 @@
 import streamlit as st
 from st_supabase_connection import SupabaseConnection
 import random
+import urllib.parse
 
 # ==========================================
 # 1. CONFIGURATION & CLÉS
@@ -121,13 +122,33 @@ with tab1:
     if not envies:
         st.info("La liste est vide ! 🚀")
     else:
-        for item in envies:
-            col1, col2, col3 = st.columns([3, 0.8, 0.5])
-            col1.markdown(f"**{item['titre']}** \n*{item['categorie']} • {item['auteur']}*")
-            if col2.button("Fait ! ✅", key=f"done_{item['id']}"):
-                valider_souvenir(item['id'], item['titre'])
-            if col3.button("🗑️", key=f"del_{item['id']}"):
-                confirmer_suppression(item['id'], item['titre'])
+        # Affichage sous forme de galerie (2 cartes par ligne)
+        cols_per_row = 2
+        for i in range(0, len(envies), cols_per_row):
+            cols = st.columns(cols_per_row)
+            for j, col in enumerate(cols):
+                if i + j < len(envies):
+                    item = envies[i + j]
+                    with col:
+                        # Création de la carte avec une bordure
+                        with st.container(border=True):
+                            # Génération de l'image magique
+                            titre_formate = urllib.parse.quote(item['titre'])
+                            image_url = f"https://image.pollinations.ai/prompt/{titre_formate}"
+                            st.image(image_url, use_container_width=True)
+                            
+                            # Contenu de la carte
+                            st.markdown(f"**{item['titre']}**")
+                            st.caption(f"{item['categorie']} • {item['auteur']}")
+                            
+                            # Boutons d'action alignés en bas de la carte
+                            btn_col1, btn_col2 = st.columns(2)
+                            with btn_col1:
+                                if st.button("Fait ! ✅", key=f"done_{item['id']}", use_container_width=True):
+                                    valider_souvenir(item['id'], item['titre'])
+                            with btn_col2:
+                                if st.button("🗑️", key=f"del_{item['id']}", use_container_width=True):
+                                    confirmer_suppression(item['id'], item['titre'])
 
 with tab2:
     if not souvenirs:
